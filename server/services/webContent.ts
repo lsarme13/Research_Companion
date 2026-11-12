@@ -89,6 +89,12 @@ export function extractHtml(url: string, html: string, domain: string): WebConte
       '[role="banner"]',
       '[role="contentinfo"]',
       '[role="complementary"]',
+      '.sidebar',
+      '.navbox',
+      '.toc',
+      '.mw-editsection',
+      '.breadcrumb',
+      '.breadcrumbs',
     ].join(', '),
   ).remove();
 
@@ -139,7 +145,6 @@ export function extractHtml(url: string, html: string, domain: string): WebConte
     const text = $(element).text().replace(/\s+/g, ' ').trim();
     if (text) blocks.push(text);
   });
-
   let text = normalizeWhitespace(blocks.join('\n\n'));
   if (text.length < 250) {
     text = normalizeWhitespace(root.text());
@@ -158,6 +163,27 @@ export function extractHtml(url: string, html: string, domain: string): WebConte
     publication,
     publishedAt,
   };
+}
+
+function removeLinkDenseLists(
+  $: ReturnType<typeof load>,
+  root: ReturnType<ReturnType<typeof load>>,
+): void {
+  root.find('ul, ol').each((_, element) => {
+    const list = $(element);
+    const listText = list.text().replace(/\s+/g, ' ').trim();
+    if (listText.length < 20) return;
+    const linkText = list
+      .find('a')
+      .map((__, link) => $(link).text().replace(/\s+/g, ' ').trim())
+      .get()
+      .join(' ')
+      .trim();
+    const linkCount = list.find('a[href]').length;
+    if (linkCount >= 2 && linkText.length / listText.length >= 0.8) {
+      list.remove();
+    }
+  });
 }
 
 async function extractPdf(buffer: Buffer): Promise<string> {
